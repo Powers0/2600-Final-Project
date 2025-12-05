@@ -9,73 +9,15 @@ from sklearn.preprocessing import OneHotEncoder
 # 1. Load CSV Files
 # --------------------------
 
-circuits = pd.read_csv("circuits.csv")
-lap_times = pd.read_csv("lap_times.csv")
-races = pd.read_csv("races.csv")
-results = pd.read_csv("results.csv")
-sprint_results = pd.read_csv("sprint_results.csv")
-pit_stops = pd.read_csv("pit_stops.csv")   # This one is critical
-
-pit_stops = pit_stops[pit_stops["milliseconds"] < 30000]
-results_clean = results.drop_duplicates(subset=["raceId", "driverId"])
-
-# Merge pit stops with results to get constructor (team)
-pit_stops = pit_stops.merge(results_clean[["raceId", "driverId", "constructorId"]], 
-                        on=["raceId", "driverId"], how="left")
-
-# Target is now the raw pit_stop time 
-pit_stops = pit_stops.rename(columns={"milliseconds" : "pit_time"})
-
-# --------------------------
-# 3. Merge features from races + circuits + seasons
-# --------------------------
-
-# Merge race info
-df = pit_stops.merge(races, on="raceId", how="left")
-
-# Merge circuit info
-df = df.merge(circuits, on="circuitId", how="left")
-
-
-# Merge constructor info (team)
-constructors = pd.read_csv("constructors.csv")
-constructors = constructors.drop(columns=["url"], errors="ignore")
-df = df.merge(constructors, on="constructorId", how="left")
-
-# --------------------------
-# 4. Add sprint results as features (optional)
-# --------------------------
-for col in ["points", "position"]:
-    sprint_results[col] = sprint_results[col].replace({"\\N": None})
-    sprint_results[col] = pd.to_numeric(sprint_results[col], errors="coerce")
-
-sprint_features = sprint_results.groupby(["raceId", "constructorId"]).agg(
-    sprint_points=("points", "mean"),
-    sprint_pos=("position", "mean")
-).reset_index()
-
-df = df.merge(sprint_features, on=["raceId", "constructorId"], how="left")
-
-# --------------------------
-# 5. Feature Cleaning
-# --------------------------
+pit_stops = pd.read_csv("pit_stops_with_alt.csvv")   # This one is critical
 
 # Example numeric features
 numeric_features = [
-    "altitude",    # if present in circuits
-    "lat", "lng",  # circuit location
-    "round",
-    "sprint_points",
-    "sprint_pos"
+    "alt",    # if present in circuits
+    "stop",
+    "lap"
 ]
 
-"""# Example categorical features
-categorical_features = [
-    "name_x",      # race name
-    "circuitRef",
-    "constructorRef",
-    "country"
-]"""
 
 # Keep only columns that exist
 numeric_features = [f for f in numeric_features if f in df.columns]
